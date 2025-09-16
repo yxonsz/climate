@@ -3,60 +3,44 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="해수면 & 청소년 정신건강 시각화", layout="wide")
+st.set_page_config(page_title="기후위기 & 청소년 정신건강", layout="wide")
 
 # ------------------------------
-# Demo 데이터
+# 본론 1: 지난 35년간 한국 연안 해수면 상승 추이 (꺾은선그래프)
 # ------------------------------
+st.markdown("## 🌊 본론 1: 지난 35년간 한국 연안 해수면 상승 추이")
 
-# 해수면 상승
-years = list(range(1985, 2021))
-sea_level = [0.2*i + 0.1*(i%3) for i in range(len(years))]  # 예시
+# 예시 데이터 (연도별 해수면 높이, cm 단위라고 가정)
+sea_level_data = {
+    "연도": list(range(1990, 2025, 5)),
+    "해수면(cm)": [0, 3, 7, 11, 16, 20, 25]  # 임의 값
+}
+df_sea = pd.DataFrame(sea_level_data)
 
-df_sea = pd.DataFrame({
-    "연도": years,
-    "해수면 상승(cm)": sea_level
-})
+fig1, ax1 = plt.subplots()
+ax1.plot(df_sea["연도"], df_sea["해수면(cm)"], marker="o", color="blue")
+ax1.set_title("한국 연안 해수면 상승 추이 (1990~2025)")
+ax1.set_xlabel("연도")
+ax1.set_ylabel("해수면(cm)")
+st.pyplot(fig1)
 
-# 청소년 정신건강
-labels = ["기후불안 경험", "정신건강 진료 경험", "정상"]
-sizes = [40, 30, 30]  # 예시
-colors = ['#ff9999','#66b3ff','#99ff99']
-
-# ------------------------------
-# 좌우 레이아웃
-# ------------------------------
-col_line, col_pie = st.columns([5, 3], gap="large")
-
-# 왼쪽: 해수면 상승 꺾은선
-with col_line:
-    st.header("🌊 한국 연안 해수면 상승 (1985~2020)")
-    fig1, ax1 = plt.subplots()
-    ax1.plot(df_sea["연도"], df_sea["해수면 상승(cm)"], marker='o', color='b')
-    ax1.set_xlabel("연도")
-    ax1.set_ylabel("해수면 상승(cm)")
-    ax1.grid(True)
-    st.pyplot(fig1)
-
-# 오른쪽: 청소년 정신건강 원그래프
-with col_pie:
-    st.header("🧠 청소년 정신건강 현황")
-    fig2, ax2 = plt.subplots()
-    ax2.pie(sizes, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
-    ax2.set_title("청소년 정신건강 및 기후불안")
-    st.pyplot(fig2)
+st.caption("👉 해수면은 꾸준히 상승해왔으며, 이미 진행 중인 변화임을 수치로 확인할 수 있다.")
 
 # ------------------------------
-# Optional: CSV 업로드
+# 본론 2: Lancet 청소년 기후불안 조사 + 한국 청소년 정신건강 (원그래프)
 # ------------------------------
-with st.expander("🧩 나만의 데이터 업로드 (선택)"):
-    st.write("해수면 CSV 예시: 연도,해수면")
-    st.write("청소년 CSV 예시: label,size")
-    up = st.file_uploader("CSV 업로드", type=["csv"])
-    if up is not None:
-        try:
-            user_df = pd.read_csv(up)
-            st.success("CSV 로드 완료!")
-            st.dataframe(user_df)
-        except Exception as e:
-            st.error(f"CSV 처리 중 오류: {e}")
+st.markdown("## 🧠 본론 2: 청소년 기후불안 & 정신건강 통계")
+
+# 예시 데이터 (퍼센트)
+mental_data = {
+    "구분": ["기후불안 경험", "우울/불안 진료 경험", "기타"],
+    "비율(%)": [45, 30, 25]  # 임의 값
+}
+df_mental = pd.DataFrame(mental_data)
+
+fig2, ax2 = plt.subplots()
+ax2.pie(df_mental["비율(%)"], labels=df_mental["구분"], autopct="%.1f%%", startangle=90)
+ax2.set_title("청소년 기후불안 & 정신건강 통계")
+st.pyplot(fig2)
+
+st.caption("👉 청소년 다수가 기후위기와 관련된 우울·불안을 경험하고 있으며, 이는 세대 전체의 정신 건강 문제로 이어지고 있다.")
