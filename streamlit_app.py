@@ -1,7 +1,7 @@
 # streamlit_app.py
 # -*- coding: utf-8 -*-
 # =========================================================
-# 한국 연안 해수면 상승 대시보드
+# 한국 연안 해수면 상승 대시보드 (예쁘게 개선)
 # 출처: 기획재정부, https://www.mof.go.kr/doc/ko/selectDoc.do?bbsSeq=10&docSeq=59658
 # =========================================================
 
@@ -95,16 +95,47 @@ max_year = int(sea_df["year"].max())
 selected_years = st.sidebar.slider("연도 범위 선택", min_year, max_year, (min_year, max_year))
 filtered_df = sea_df[(sea_df["year"] >= selected_years[0]) & (sea_df["year"] <= selected_years[1])]
 
-# ----------------- 메인 시각화 -----------------
+# ----------------- 메인 시각화 (예쁘게 개선) -----------------
 fig = px.line(
     filtered_df,
     x="year",
     y="sea_level_mm",
     markers=True,
     labels={"year": "연도", "sea_level_mm": "해수면 상승(mm)"},
-    title="한국 연안 해수면 상승 추이 (1989~2024)"
+    title="🌊 한국 연안 해수면 상승 추이 (1989~2024)",
 )
-fig.update_layout(height=500)
+
+# 선 스타일, 마커, 컬러
+fig.update_traces(
+    line=dict(color="#1f77b4", width=4, shape='spline'),  # 부드러운 곡선 + 두께
+    marker=dict(size=10, symbol="circle", color="#ff7f0e")
+)
+
+# 레이아웃 개선
+fig.update_layout(
+    height=550,
+    plot_bgcolor="#f9f9f9",
+    paper_bgcolor="#ffffff",
+    font=dict(family="Pretendard", size=14, color="#222222"),
+    title=dict(x=0.5, xanchor='center'),
+    xaxis=dict(
+        title="연도",
+        showgrid=True,
+        gridcolor="#e1e1e1",
+        tickmode="linear",
+        dtick=2
+    ),
+    yaxis=dict(
+        title="해수면 상승 (mm)",
+        showgrid=True,
+        gridcolor="#e1e1e1",
+    ),
+)
+
+# 축 테두리
+fig.update_xaxes(showline=True, linewidth=1, linecolor='black')
+fig.update_yaxes(showline=True, linewidth=1, linecolor='black')
+
 st.plotly_chart(fig, use_container_width=True)
 
 # ----------------- 전처리된 데이터 다운로드 -----------------
