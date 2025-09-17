@@ -1,6 +1,5 @@
-# requirements.txt
-streamlit==1.26.0
-pandas==2.2.3
-numpy==1.26.4
-plotly==5.22.0
-requests==2.32.0
+streamlit>=1.25.0
+pandas>=2.1.0
+numpy>=1.26.0
+plotly>=5.20.0
+requests
