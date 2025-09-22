@@ -1,84 +1,29 @@
 import streamlit as st
-import pandas as pd
-import numpy as np
 import plotly.graph_objects as go
-import plotly.express as px
 import time
 import random
 import math
-import requests
-from datetime import datetime
-try:
-    from st_keyup import st_keyup
-    KEYBOARD_AVAILABLE = True
-except ImportError:
-    KEYBOARD_AVAILABLE = False
 
 # 페이지 설정
 st.set_page_config(
     page_title="🛟 두부 튜브 게임",
     page_icon="🛟",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # 게임 상수
 GAME_WIDTH = 500
-GAME_HEIGHT = 700
+GAME_HEIGHT = 600
 CHAR_SIZE = 30
 GRAVITY = 1
 JUMP_POWER = -15
 TUBE_WIDTH = 100
 TUBE_HEIGHT = 20
 
-# CSS 스타일
-st.markdown("""
-<style>
-    .game-container {
-        border: 3px solid #ff69b4;
-        border-radius: 15px;
-        padding: 20px;
-        background: linear-gradient(180deg, #87ceeb 0%, #ffb6c1 100%);
-        margin: 20px 0;
-    }
-    .score-board {
-        background: rgba(255, 255, 255, 0.9);
-        border-radius: 10px;
-        padding: 15px;
-        margin: 10px 0;
-        text-align: center;
-        font-size: 18px;
-        font-weight: bold;
-    }
-    .game-over {
-        background: rgba(255, 0, 0, 0.1);
-        border: 2px solid #ff4444;
-        border-radius: 10px;
-        padding: 20px;
-        text-align: center;
-        margin: 20px 0;
-    }
-    .controls {
-        background: rgba(255, 255, 255, 0.8);
-        border-radius: 10px;
-        padding: 15px;
-        margin: 10px 0;
-    }
-    .stButton > button {
-        width: 100%;
-        height: 50px;
-        font-size: 16px;
-        font-weight: bold;
-        border-radius: 10px;
-        margin: 5px 0;
-    }
-</style>
-""", unsafe_allow_html=True)
-
 # 게임 상태 초기화
-def init_game_state():
-    if 'game' not in st.session_state:
-        st.session_state.game = {
+def init_game():
+    if 'game_data' not in st.session_state:
+        st.session_state.game_data = {
             'char_x': GAME_WIDTH // 2 - CHAR_SIZE // 2,
             'char_y': GAME_HEIGHT - 100,
             'velocity_y': 0,
@@ -87,57 +32,57 @@ def init_game_state():
             'score': 0,
             'game_over': False,
             'on_tube': False,
-            'particles': [],
-            'stars': [],
             'wave_offset': 0,
             'char_bounce': 0,
             'water_rise_speed': 1,
             'game_started': False,
             'high_score': 0,
-            'frame_count': 0,
-            'last_update': time.time()
+            'frame_count': 0
         }
-        generate_initial_content()
+        create_initial_tubes()
 
-def generate_initial_content():
-    # 초기 튜브 생성
-    st.session_state.game['tubes'] = []
+def create_initial_tubes():
+    st.session_state.game_data['tubes'] = []
     for i in range(6):
         tube = {
             'x': random.randint(50, GAME_WIDTH - TUBE_WIDTH - 50),
-            'y': GAME_HEIGHT - 150 - i * 120,
+            'y': GAME_HEIGHT - 150 - i * 100,
             'width': TUBE_WIDTH,
             'height': TUBE_HEIGHT,
             'color': f'hsl({random.randint(0, 360)}, 70%, 60%)',
             'bounce': random.random() * 2 * math.pi
         }
-        st.session_state.game['tubes'].append(tube)
-    
-    # 별 생성
-    st.session_state.game['stars'] = []
-    for _ in range(30):
-        star = {
-            'x': random.randint(0, GAME_WIDTH),
-            'y': random.randint(0, GAME_HEIGHT // 2),
-            'size': random.randint(2, 4),
-            'twinkle': random.random() * 2 * math.pi
-        }
-        st.session_state.game['stars'].append(star)
+        st.session_state.game_data['tubes'].append(tube)
+
+def reset_game():
+    st.session_state.game_data = {
+        'char_x': GAME_WIDTH // 2 - CHAR_SIZE // 2,
+        'char_y': GAME_HEIGHT - 100,
+        'velocity_y': 0,
+        'water_level': GAME_HEIGHT,
+        'tubes': [],
+        'score': 0,
+        'game_over': False,
+        'on_tube': False,
+        'wave_offset': 0,
+        'char_bounce': 0,
+        'water_rise_speed': 1,
+        'game_started': True,
+        'high_score': st.session_state.game_data.get('high_score', 0),
+        'frame_count': 0
+    }
+    create_initial_tubes()
 
 def update_game():
-    game = st.session_state.game
+    game = st.session_state.game_data
     
     if game['game_over'] or not game['game_started']:
         return
     
-    current_time = time.time()
-    dt = current_time - game['last_update']
-    game['last_update'] = current_time
-    game['frame_count'] += 1
-    
     # 애니메이션 업데이트
     game['wave_offset'] += 0.1
     game['char_bounce'] += 0.15
+    game['frame_count'] += 1
     
     # 물 상승
     game['water_level'] -= game['water_rise_speed']
@@ -202,14 +147,6 @@ def update_game():
         }
         game['tubes'].append(new_tube)
     
-    # 별 업데이트
-    for star in game['stars']:
-        star['twinkle'] += 0.05
-        star['y'] += game['water_rise_speed']
-        if star['y'] > GAME_HEIGHT // 2:
-            star['y'] = -10
-            star['x'] = random.randint(0, GAME_WIDTH)
-    
     # 게임오버 체크
     if game['char_y'] + CHAR_SIZE > game['water_level']:
         game['game_over'] = True
@@ -220,8 +157,8 @@ def update_game():
     if game['score'] > 0 and game['score'] % 100 == 0:
         game['water_rise_speed'] = min(3, 1 + game['score'] // 200)
 
-def create_game_plot():
-    game = st.session_state.game
+def create_game_visualization():
+    game = st.session_state.game_data
     
     fig = go.Figure()
     
@@ -231,44 +168,17 @@ def create_game_plot():
         height=GAME_HEIGHT + 100,
         xaxis=dict(range=[0, GAME_WIDTH], showgrid=False, zeroline=False, showticklabels=False),
         yaxis=dict(range=[GAME_HEIGHT, 0], showgrid=False, zeroline=False, showticklabels=False),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='lightblue',
+        paper_bgcolor='lightpink',
         margin=dict(l=50, r=50, t=50, b=50),
         showlegend=False
     )
     
-    # 하늘 배경
-    fig.add_shape(
-        type="rect",
-        x0=0, y0=0, x1=GAME_WIDTH, y1=game['water_level'],
-        fillcolor="rgba(135, 206, 250, 0.6)",
-        line=dict(width=0),
-        layer="below"
-    )
-    
-    # 별들
-    if game['stars']:
-        star_x = [s['x'] for s in game['stars']]
-        star_y = [s['y'] for s in game['stars']]
-        star_sizes = [s['size'] * (1 + 0.3 * math.sin(s['twinkle'])) for s in game['stars']]
-        
-        fig.add_scatter(
-            x=star_x, y=star_y,
-            mode='markers',
-            marker=dict(
-                size=star_sizes,
-                color='white',
-                opacity=0.8,
-                symbol='star'
-            ),
-            hoverinfo='skip'
-        )
-    
     # 물 (물결 효과)
-    wave_x = list(range(0, GAME_WIDTH + 1, 5))
+    wave_x = list(range(0, GAME_WIDTH + 1, 10))
     wave_y = []
     for x in wave_x:
-        wave = 5 * math.sin((x * 0.02) + game['wave_offset'])
+        wave = 5 * math.sin((x * 0.03) + game['wave_offset'])
         wave_y.append(game['water_level'] + wave)
     
     # 물 영역 채우기
@@ -278,9 +188,10 @@ def create_game_plot():
     fig.add_scatter(
         x=water_x, y=water_y,
         fill='toself',
-        fillcolor='rgba(0, 119, 190, 0.7)',
-        line=dict(color='rgba(255, 255, 255, 0.8)', width=2),
-        hoverinfo='skip'
+        fillcolor='blue',
+        line=dict(color='white', width=2),
+        hoverinfo='skip',
+        opacity=0.7
     )
     
     # 튜브들
@@ -297,16 +208,17 @@ def create_game_plot():
         )
     
     # 캐릭터 (두부)
-    bounce_offset = 2 * math.sin(game['char_bounce'])
+    bounce_offset = 3 * math.sin(game['char_bounce'])
     char_y_with_bounce = game['char_y'] + bounce_offset
     
     # 캐릭터 그림자
     fig.add_shape(
         type="rect",
         x0=game['char_x'] + 2, y0=game['char_y'] + CHAR_SIZE + 2,
-        x1=game['char_x'] + CHAR_SIZE + 2, y1=game['char_y'] + CHAR_SIZE + 7,
-        fillcolor="rgba(0, 0, 0, 0.3)",
-        line=dict(width=0)
+        x1=game['char_x'] + CHAR_SIZE + 2, y1=game['char_y'] + CHAR_SIZE + 5,
+        fillcolor="gray",
+        line=dict(width=0),
+        opacity=0.5
     )
     
     # 캐릭터 본체
@@ -314,7 +226,7 @@ def create_game_plot():
         type="rect",
         x0=game['char_x'], y0=char_y_with_bounce,
         x1=game['char_x'] + CHAR_SIZE, y1=char_y_with_bounce + CHAR_SIZE,
-        fillcolor="rgba(255, 255, 255, 0.9)",
+        fillcolor="white",
         line=dict(color="hotpink", width=3)
     )
     
@@ -328,156 +240,125 @@ def create_game_plot():
         hoverinfo='skip'
     )
     
-    # 미소 (근사치)
+    # 미소
     smile_x = game['char_x'] + 15
     smile_y = char_y_with_bounce + 20
     fig.add_scatter(
         x=[smile_x], y=[smile_y],
         mode='markers',
-        marker=dict(size=8, color='red', symbol='circle'),
+        marker=dict(size=4, color='red', symbol='circle'),
         hoverinfo='skip'
     )
     
     return fig
 
-def handle_controls():
-    # 키보드 입력 처리 (키보드 라이브러리가 있는 경우)
-    if KEYBOARD_AVAILABLE:
-        # 키 입력 감지
-        key = st_keyup("키보드로 조작하세요! (←→ 이동, SPACE 점프)", key="keyboard_input")
-        
-        if key:
-            if key == "ArrowLeft" and not st.session_state.game['game_over']:
-                st.session_state.game['char_x'] = max(0, st.session_state.game['char_x'] - 15)
-                st.rerun()
-            elif key == "ArrowRight" and not st.session_state.game['game_over']:
-                st.session_state.game['char_x'] = min(GAME_WIDTH - CHAR_SIZE, st.session_state.game['char_x'] + 15)
-                st.rerun()
-            elif key == " " and not st.session_state.game['game_over'] and st.session_state.game['on_tube']:  # Space key
-                st.session_state.game['velocity_y'] = JUMP_POWER
-                st.rerun()
-    
-    # 버튼 컨트롤 (항상 사용 가능)
-    col1, col2, col3, col4, col5 = st.columns(5)
-    
-    with col1:
-        if st.button("⬅️ 왼쪽", key="left"):
-            if not st.session_state.game['game_over']:
-                st.session_state.game['char_x'] = max(0, st.session_state.game['char_x'] - 15)
-    
-    with col2:
-        if st.button("⬆️ 점프", key="jump"):
-            if not st.session_state.game['game_over'] and st.session_state.game['on_tube']:
-                st.session_state.game['velocity_y'] = JUMP_POWER
-    
-    with col3:
-        if st.button("➡️ 오른쪽", key="right"):
-            if not st.session_state.game['game_over']:
-                st.session_state.game['char_x'] = min(GAME_WIDTH - CHAR_SIZE, st.session_state.game['char_x'] + 15)
-    
-    with col4:
-        if st.button("🎮 시작/재시작", key="restart"):
-            init_game_state()
-            st.session_state.game['game_started'] = True
-            st.session_state.game['game_over'] = False
-    
-    with col5:
-        if st.button("⏸️ 일시정지", key="pause"):
-            st.session_state.game['game_started'] = not st.session_state.game['game_started']
-
-# 메인 게임 로직
 def main():
-    init_game_state()
+    init_game()
     
     st.title("🛟 엄지공주 두부 튜브 게임 🛟")
-    st.markdown("### 물이 차올라와요! 튜브를 타고 계속 위로 올라가세요!")
+    st.subheader("물이 차올라와요! 튜브를 타고 계속 위로 올라가세요!")
     
-    # 사이드바 - 게임 정보
-    with st.sidebar:
-        st.header("🎮 게임 정보")
-        
-        game = st.session_state.game
-        
-        st.markdown(f"""
-        <div class="score-board">
-            <div>🏆 현재 점수: {game['score']}</div>
-            <div>⭐ 최고 점수: {game['high_score']}</div>
-            <div>💧 물 위험도: {game['water_rise_speed']}</div>
-            <div>📏 물 높이: {GAME_HEIGHT - game['water_level']:.0f}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown("""
-        <div class="controls">
-            <h4>🎯 조작법</h4>
-            <p>⬅️ ➡️ : 좌우 이동</p>
-            <p>SPACE : 점프 (튜브 위에서만!)</p>
-            <p>🎮 : 게임 시작/재시작</p>
-            <p>⏸️ : 일시정지</p>
-            <p style="font-size: 12px; color: #666;">
-                💡 키보드와 버튼 모두 사용 가능!
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("📊 게임 통계 보기"):
-            st.session_state.show_stats = not st.session_state.get('show_stats', False)
+    game = st.session_state.game_data
     
-    # 게임 화면
-    col1, col2 = st.columns([3, 1])
+    # 점수 표시
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        # 게임오버 메시지
-        if st.session_state.game['game_over']:
-            st.markdown(f"""
-            <div class="game-over">
-                <h2>🌊 게임 오버! 🌊</h2>
-                <p>점수: {st.session_state.game['score']}점</p>
-                <p>두부가 물에 빠졌어요! 🫧</p>
-                <p>다시 도전해보세요!</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        elif not st.session_state.game['game_started']:
-            st.markdown("""
-            <div class="game-container">
-                <h3 style="text-align: center;">🌟 게임을 시작하려면 '🎮 시작/재시작' 버튼을 눌러주세요! 🌟</h3>
-                <p style="text-align: center;">물이 점점 차올라와요! 튜브를 타고 계속 위로 올라가세요!</p>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # 게임 업데이트 및 렌더링
-        if st.session_state.game['game_started'] and not st.session_state.game['game_over']:
-            update_game()
-        
-        # 게임 플롯
-        game_plot = create_game_plot()
-        st.plotly_chart(game_plot, use_container_width=True, key="game_plot")
-        
-        # 컨트롤 버튼
-        handle_controls()
+        st.metric("현재 점수", game['score'])
     
     with col2:
-        if st.session_state.get('show_stats', False):
-            st.subheader("📊 게임 통계")
-            
-            # 가상의 통계 데이터
-            stats_data = pd.DataFrame({
-                '게임 회차': range(1, 11),
-                '점수': [random.randint(50, 500) for _ in range(10)],
-                '생존 시간(초)': [random.randint(30, 300) for _ in range(10)]
-            })
-            
-            fig_stats = px.line(stats_data, x='게임 회차', y='점수', 
-                               title='점수 추이', markers=True)
-            st.plotly_chart(fig_stats, use_container_width=True)
-            
-            st.dataframe(stats_data, use_container_width=True)
+        st.metric("최고 점수", game['high_score'])
     
-    # 자동 업데이트를 위한 타이머
-    if st.session_state.game['game_started'] and not st.session_state.game['game_over']:
+    with col3:
+        st.metric("물 위험도", game['water_rise_speed'])
+    
+    with col4:
+        st.metric("물 높이", int(GAME_HEIGHT - game['water_level']))
+    
+    # 게임 화면과 컨트롤
+    game_col, control_col = st.columns([3, 1])
+    
+    with game_col:
+        # 게임오버 메시지
+        if game['game_over']:
+            st.error(f"🌊 게임 오버! 🌊\n점수: {game['score']}점\n두부가 물에 빠졌어요! 🫧")
+        
+        elif not game['game_started']:
+            st.info("🌟 게임을 시작하려면 '시작' 버튼을 눌러주세요! 🌟")
+        
+        # 게임 업데이트
+        if game['game_started'] and not game['game_over']:
+            update_game()
+        
+        # 게임 시각화
+        game_fig = create_game_visualization()
+        st.plotly_chart(game_fig, use_container_width=True, key="game_display")
+        
+        # 컨트롤 버튼
+        st.subheader("🎮 게임 조작")
+        btn_col1, btn_col2, btn_col3, btn_col4, btn_col5 = st.columns(5)
+        
+        with btn_col1:
+            if st.button("⬅️ 왼쪽", key="left_btn"):
+                if not game['game_over'] and game['game_started']:
+                    game['char_x'] = max(0, game['char_x'] - 25)
+                    st.rerun()
+        
+        with btn_col2:
+            jump_enabled = game['on_tube'] and game['game_started'] and not game['game_over']
+            if st.button("⬆️ 점프", key="jump_btn", disabled=not jump_enabled):
+                if jump_enabled:
+                    game['velocity_y'] = JUMP_POWER
+                    st.rerun()
+        
+        with btn_col3:
+            if st.button("➡️ 오른쪽", key="right_btn"):
+                if not game['game_over'] and game['game_started']:
+                    game['char_x'] = min(GAME_WIDTH - CHAR_SIZE, game['char_x'] + 25)
+                    st.rerun()
+        
+        with btn_col4:
+            if st.button("🎮 시작/재시작", key="start_btn"):
+                reset_game()
+                st.rerun()
+        
+        with btn_col5:
+            if game['game_started'] and not game['game_over']:
+                if st.button("⏸️ 일시정지", key="pause_btn"):
+                    game['game_started'] = False
+            else:
+                if st.button("▶️ 계속", key="resume_btn"):
+                    if not game['game_over']:
+                        game['game_started'] = True
+                        st.rerun()
+    
+    with control_col:
+        st.subheader("🎯 게임 도움말")
+        st.write("**조작법:**")
+        st.write("- ⬅️ ➡️ : 좌우 이동")
+        st.write("- ⬆️ : 점프 (튜브 위에서만!)")
+        st.write("- 🎮 : 게임 시작/재시작")
+        st.write("- ⏸️ ▶️ : 일시정지/재개")
+        
+        st.write("**게임 목표:**")
+        st.write("- 물이 차오르기 전에 튜브를 타고 위로!")
+        st.write("- 점수를 많이 획득하세요!")
+        st.write("- 물에 빠지면 게임오버!")
+        
+        st.write("**팁:**")
+        st.write("- 튜브 위에서만 점프 가능")
+        st.write("- 점수가 높을수록 물이 빨리 차올라요")
+        st.write("- 타이밍을 잘 맞춰서 점프하세요!")
+        
+        if game['score'] > 0:
+            st.write(f"**현재 기록:**")
+            st.write(f"- 점수: {game['score']}점")
+            st.write(f"- 생존 시간: {game['frame_count'] // 10}초")
+    
+    # 자동 업데이트
+    if game['game_started'] and not game['game_over']:
         time.sleep(0.1)
         st.rerun()
 
-# 게임 실행
-main()
+if __name__ == "__main__":
+    main()
