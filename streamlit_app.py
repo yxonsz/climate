@@ -8,6 +8,11 @@ import random
 import math
 import requests
 from datetime import datetime
+try:
+    from st_keyup import st_keyup
+    KEYBOARD_AVAILABLE = True
+except ImportError:
+    KEYBOARD_AVAILABLE = False
 
 # 페이지 설정
 st.set_page_config(
@@ -336,6 +341,23 @@ def create_game_plot():
     return fig
 
 def handle_controls():
+    # 키보드 입력 처리 (키보드 라이브러리가 있는 경우)
+    if KEYBOARD_AVAILABLE:
+        # 키 입력 감지
+        key = st_keyup("키보드로 조작하세요! (←→ 이동, SPACE 점프)", key="keyboard_input")
+        
+        if key:
+            if key == "ArrowLeft" and not st.session_state.game['game_over']:
+                st.session_state.game['char_x'] = max(0, st.session_state.game['char_x'] - 15)
+                st.rerun()
+            elif key == "ArrowRight" and not st.session_state.game['game_over']:
+                st.session_state.game['char_x'] = min(GAME_WIDTH - CHAR_SIZE, st.session_state.game['char_x'] + 15)
+                st.rerun()
+            elif key == " " and not st.session_state.game['game_over'] and st.session_state.game['on_tube']:  # Space key
+                st.session_state.game['velocity_y'] = JUMP_POWER
+                st.rerun()
+    
+    # 버튼 컨트롤 (항상 사용 가능)
     col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
@@ -389,9 +411,12 @@ def main():
         <div class="controls">
             <h4>🎯 조작법</h4>
             <p>⬅️ ➡️ : 좌우 이동</p>
-            <p>⬆️ : 점프 (튜브 위에서만!)</p>
+            <p>SPACE : 점프 (튜브 위에서만!)</p>
             <p>🎮 : 게임 시작/재시작</p>
             <p>⏸️ : 일시정지</p>
+            <p style="font-size: 12px; color: #666;">
+                💡 키보드와 버튼 모두 사용 가능!
+            </p>
         </div>
         """, unsafe_allow_html=True)
         
